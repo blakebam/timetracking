@@ -1,76 +1,101 @@
 # Time Tracking & Invoices
 
-A personal, self-hosted web app for logging hours worked on tasks. It produces a **weekly timesheet PDF** and a **monthly invoice PDF** with pay calculated from an hourly rate.
+A personal, self-hosted web app for logging the hours you work on tasks and billing for them. It produces a **weekly timesheet PDF** and a **monthly invoice PDF**, with pay calculated from your hourly rate.
 
-- **Client:** React 19 + Vite + TypeScript (`client/`)
-- **Server:** Express 5 + TypeScript (`server/`)
-- **Storage:** SQLite via better-sqlite3, in one file at `data/timetracking.db` (gitignored)
-- **Shared:** types, zod schemas and date/time helpers used by both sides (`shared/`)
+It is single-user and has no login. The server listens only on `127.0.0.1`, so other machines can't reach it, and all data stays in one local SQLite file.
 
-It is single-user and has no login. The server listens only on `127.0.0.1`, so other machines can't reach it.
+## Features
+
+- **Day view** — log entries with a start time, end time and task. Times accept quick shorthand (`110` → 11:00 AM), new entries start where the last one ended, task names autocomplete, and overlapping entries are rejected. Use Alt+←/→ to move between days.
+- **Week view** — per-task and per-day totals, shown either as a timesheet period (Monday–Sunday, split at month boundaries) or a full week. Export the timesheet as a PDF.
+- **Calendar** — a monthly grid showing each day's total and largest tasks, the month total, and links to each timesheet period and its PDF.
+- **Invoices** — preview a draft invoice for any month (one line per task), then issue it. Issuing snapshots the hours, rate and billing details and advances the invoice number. Download issued invoices or a watermarked draft as PDF.
+- **Settings** — your biller details, the bill-to company, hourly rate, next invoice number and default start time.
+
+## Tech stack
+
+- **Client:** React 19, Vite, TypeScript (`client/`)
+- **Server:** Express 5, TypeScript (`server/`), with PDFs rendered by `@react-pdf/renderer`
+- **Storage:** SQLite via better-sqlite3, in a single file at `data/timetracking.db` (gitignored)
+- **Shared:** types, zod schemas, and date, time and money helpers used by both sides (`shared/`)
 
 ## Getting started
 
-Requires **Node 24** (installed here via nvm-windows: `nvm use 24.22.0`).
+Requires **Node 24** (see `.nvmrc`).
 
 ```sh
-npm install          # once
-npm run dev          # client at http://localhost:5173 (proxies /api to the server on :4000)
+npm install
+npm run dev
 ```
 
-| Command             | What it does                                               |
-| ------------------- | ---------------------------------------------------------- |
-| `npm run dev`       | Server (`tsx watch`) + client (Vite) with hot reload       |
-| `npm run build`     | Builds `client/dist` and `server/dist`                     |
-| `npm start`         | Runs the built app as one process at http://127.0.0.1:4000 |
-| `npm test`          | Vitest (shared + server)                                   |
-| `npm run typecheck` | `tsc --noEmit` in every package                            |
-| `npm run format`    | Prettier                                                   |
+Then open http://localhost:5173. In development the client proxies `/api` requests to the server on port 4000.
 
-Environment overrides (all optional): `PORT` (4000), `HOST` (127.0.0.1), `DB_PATH` (`data/timetracking.db`).
+To run the production build as a single process:
 
-**Example data:** `npm run seed:example` writes `data/example.db` with the September 2026 example (the data behind the reference timesheets and invoice; placeholder biller details). Run the app against it with `DB_PATH=data/example.db npm run dev`.
+```sh
+npm run build
+npm start
+```
 
-**Backup:** stop the server and copy `data/timetracking.db`. The database is a single file.
+Then open http://127.0.0.1:4000.
+
+The database is created and migrated automatically on first start. Fill in the **Settings** page before issuing invoices.
+
+### Commands
+
+| Command                | What it does                                                 |
+| ---------------------- | ------------------------------------------------------------ |
+| `npm run dev`          | Server and client with hot reload                            |
+| `npm run build`        | Builds `client/dist` and `server/dist`                       |
+| `npm start`            | Runs the built app at http://127.0.0.1:4000                  |
+| `npm test`             | Runs the test suite (Vitest)                                 |
+| `npm run typecheck`    | Type-checks every package                                    |
+| `npm run format`       | Formats the code with Prettier                               |
+| `npm run seed:example` | Writes `data/example.db` with sample data for September 2026 |
+
+### Configuration
+
+All environment variables are optional:
+
+| Variable  | Default                | Description          |
+| --------- | ---------------------- | -------------------- |
+| `PORT`    | `4000`                 | Server port          |
+| `HOST`    | `127.0.0.1`            | Address to listen on |
+| `DB_PATH` | `data/timetracking.db` | SQLite database file |
+
+### Example data
+
+To try the app without touching your own data, seed the example database and point the app at it:
+
+```sh
+npm run seed:example
+DB_PATH=data/example.db npm run dev
+```
+
+The example uses placeholder biller details.
+
+### Backup
+
+Stop the server and copy `data/timetracking.db`. Everything is stored in that one file.
 
 ## Project layout
 
 ```
-shared/src/   primitives (IsoDate, StartTime/EndTime), types, schemas, time + date helpers, summary + invoice math, API error types, fixtures/ (September 2026 example)
-server/src/   app.ts (routes), index.ts (startup), config.ts, db/ (connection, migrations, repos), routes/, middleware/, pdf/ (react-pdf documents + theme)
-server/assets/fonts/   Inter TTFs + OFL license
-server/scripts/        seedExample.ts
-client/src/   App shell, api/ (fetch wrappers), hooks/, components/ (TimeCombobox), features/day/, features/calendar/, features/settings/, features/week/, features/invoices/, styles/
-specs/        detailed work specs, one per step (see specs/README.md for shared conventions)
+client/src/
+  api/          fetch wrappers for each endpoint
+  hooks/        data hooks (entries, settings, summary, invoices)
+  components/   shared UI such as the time picker
+  features/     day/, week/, calendar/, invoices/, settings/ pages
+  styles/       design tokens
+server/src/
+  app.ts        routes
+  index.ts      startup
+  db/           connection, migrations, repositories
+  routes/       API route handlers
+  middleware/   validation and error handling
+  pdf/          timesheet and invoice PDF documents
+server/assets/fonts/   Inter fonts and license
+server/scripts/        example data seeder
+shared/src/     types, schemas, date/time/money helpers, summary and invoice math
+data/           local database (gitignored)
 ```
-
-## Build progress
-
-Detailed specs live in [`specs/`](specs/). Steps are listed in **build order**, which differs from spec numbering.
-
-### Done
-
-| Order | Spec                                                                  | What was built                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Commit    |
-| ----- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| 1     | [1 — Project scaffold](specs/01-scaffold.md)                          | npm workspaces; Vite client with nav shell and server-status footer; Express server with `/api/health`; dev proxy; single-process production start with SPA fallback; localhost-only binding                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | `44d8163` |
-| 2     | [2 — Database layer](specs/02-database.md)                            | SQLite connection (single-file journal); transactional migrations that refuse newer schemas; `time_entries` + `settings` tables; DB triggers that block overlapping entries; entries and settings repositories; strict `IsoDate` / `StartTime` / `EndTime` types                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | `3bd2be2` |
-| 3     | [3 — Entries API + validation](specs/03-entries-api.md)               | `/api/entries` create/read/update/delete; `/api/tasks/names` autocomplete; zod schemas shared with the client; overlaps rejected with `409` naming the conflicting entry; 12-hour time formatting helpers                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | `b2e62f9` |
-| 4     | [7a — Settings API](specs/07-settings.md)                             | `GET`/`PUT /api/settings` (full replace); `settingsInputSchema` (trimmed text, multi-line addresses, optional email, rate and invoice-number bounds); money helpers `parseUsdToCents` (no float math), `formatUsd`, `formatRate`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | `997a773` |
-| 5     | [4 — Day view & entry form](specs/04-day-view.md)                     | `/day/:date` screen: `TimeCombobox` with typed shorthand (`110` → 11:00 AM; ranked by zero-fill, then nearness to a reference time); smart defaults (next entry starts where the last ended, else the settings default); task autocomplete; edit/delete; overlap banner with outlined conflicting rows; Alt+←/→ day navigation; `apiFetch` client, `useEntries`/`useSettings` hooks; `todayIso`/`addDays`/`formatLongDate`. Tests run in US Central time so DST cases are real                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `88c5640` |
-| 6     | [7b — Settings page](specs/07-settings.md)                            | `/settings` form (biller, bill-to, billing, preferences); rate typed as text and reformatted to `10.00` on blur; `INV0026` preview; Save enabled only when something changed (numbers compared by value); shared-schema validation with server `400` issues mapped to fields; "Saved" confirmation refreshes the `useSettings` cache (`invalidate()`) so the Day view uses the new default start at once; "Discard unsaved changes?" on in-app navigation (`useBlocker`, so the app now uses a data router) and on closing the tab                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | `bafad34` |
-| 7     | [6 — Summary service & week/timesheet view](specs/06-summary-week.md) | `summarize()` in shared (per-task and per-day totals in integer minutes; names grouped ignoring case and whitespace, shown with the most recent spelling) and `byFirstWorked()`; date helpers for billing weeks, months, the calendar grid and timesheet periods (Mon–Sun cut at month boundaries), plus `formatPeriod`; `GET /api/summary`; `/week` page with Timesheet and Full week modes: URL normalized to the period start, prev/next by period or week, mode toggle keeps the anchor date, split-week note linking the other half, month divider in full weeks, day headers link to the Day view, Export PDF disabled ("Coming soon"); `useSummary` hook; shared `describeError`                                                                                                                                                                                                                                                                                                                                                | `e1381a9` |
-| 8     | [5 — Monthly calendar](specs/05-calendar.md)                          | `/calendar?month=YYYY-MM`: Sunday-first grid (4–6 rows) whose day cells link to the Day view and show the total, the two largest tasks and `+N more`; today outlined; spill-over days muted but keep their data; a missing or invalid month falls back to the current one (URL replaced); one `/api/summary` request per month, with the month total and the list of timesheet periods (each linking to its timesheet) computed from in-month days only; `role="grid"` with labelled day links and arrow-key movement; pure helpers in `calendarLogic.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | `f296456` |
-| 9     | [8 — Invoices](specs/08-invoices.md)                                  | Migration 002 (`invoices`, `invoice_lines`); `buildInvoiceDraft` (one line per task in first-worked order, integer-cent line amounts that always sum to the total), `invoiceProblems`, `formatInvoiceNumber`, `defaultInvoiceDate` (1st of the next month); `/api/invoices` list, draft (`problems` + any issued invoice), issue and delete, each write in one transaction: issuing snapshots the lines, rate and biller/company details and bumps `nextInvoiceNumber`; a month can be invoiced once (`409 invoice_exists`); only the latest invoice can be deleted (`409 not_latest`) and its number is handed back; settings PUT rejects a next number at or below the highest issued; `/invoices?month=` page (defaults to last month) with the draft or read-only issued snapshot, a warning when live hours differ from the snapshot, confirm dialogs, and the issued list; PDF buttons disabled until spec 9; September 2026 example fixture in `shared/src/fixtures/`                                                           | `7a9417c` |
-| 10    | [9 — PDF export](specs/09-pdf-export.md)                              | Server-side PDFs with `@react-pdf/renderer` and Inter (Regular + Medium TTFs and OFL in `server/assets/fonts/`, found via `config.fontsDir` in dev and the build): weekly timesheet (per-task totals in first-worked order, gradient rules, header repeated on continued pages, empty periods read `Total 0`) and invoice (biller block skipping empty fields, INVOICE/DATE/DUE/BALANCE DUE, bill-to, lines with 2-decimal right-aligned amounts, TOTAL row, DRAFT watermark for previews); `GET /api/reports/timesheet.pdf?start=`, `/api/invoices/:id/pdf` and `/api/invoices/draft.pdf?month=&invoiceDate=` (attachment, or `?inline=1`); `formatHoursCompact`, `formatShortRange`, `formatInvoiceDate`, `monthName`; Export PDF in the Week view (timesheet mode), download icons on the Calendar timesheet list, Preview PDF / [PDF] / download-on-issue in Invoices; `npm run seed:example` writes `data/example.db`; tests extract the PDF text with `pdfjs-dist` and match all five example timesheets and the example invoice | `87f141e` |
-
-Current state: 372 tests pass; typecheck and production build are clean. All specs are built.
-
-**Review fixes** (`dea4b9c`): a final review against the specs fixed the Day view treating any entry that ends at midnight as a full day (the form now suggests the first free gap and is disabled only when every hour is logged), replaced a duplicate invoice-number helper with the shared `formatInvoiceNumber`, aligned the too-low next-invoice-number message with spec 7, and made the build self-contained (tsup copies the PDF fonts into `server/dist/fonts`).
-
-**Manual testing: done.** The manual checks from specs 4–9 were run in a browser after the review fixes, and all passed.
-
-### Remaining
-
-Nothing: every spec is built and manually tested.
-
-Reference PDFs are kept outside the repo, at `A:\ExamplePdfs\`, because they contain personal details.
