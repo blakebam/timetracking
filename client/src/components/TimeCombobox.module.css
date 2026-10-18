@@ -1,0 +1,70 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.label {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.control {
+  position: relative;
+}
+
+.input {
+  width: 11rem;
+}
+
+.list {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 2px);
+  left: 0;
+  min-width: 100%;
+  max-height: 16rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--space-1) 0;
+  list-style: none;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+}
+
+.option {
+  padding: var(--space-1) var(--space-3);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.option:hover {
+  background: var(--color-hover);
+}
+
+.active,
+.active:hover {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.empty {
+  padding: var(--space-1) var(--space-3);
+  color: var(--color-muted);
+}
+
+.error {
+  font-size: 0.8rem;
+  color: var(--color-error);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
